@@ -8,18 +8,137 @@ output:
 
 ## Loading and preprocessing the data
 
-
+data <- read.csv('activity.csv')
 
 ## What is mean total number of steps taken per day?
+
+total_steps_taken_per_day<- tapply(data$steps, data$date, sum) 
+
+ 
+head(total_steps_taken_per_day) 
+ hist(total_steps_taken_per_day, xlab = "Total steps taken per day", ylab = "frequency", col = "grey", breaks = 20, main = "Histogram of total steps taken per day") 
+
+ # Mean number of steps taken per day 
+ mean(total_steps_taken_per_day, na.rm = TRUE) 
+#Mean: 10766.19
+
+ #Median number of steps taken per day 
+ median(total_steps_taken_per_day, na.rm = TRUE) 
 
 
 
 ## What is the average daily activity pattern?
+Create the subset with mean for each interval
+
+IntervalSet <- data %>%
+  filter(!is.na(steps)) %>%
+  group_by(interval) %>%
+  summarize(steps = mean(steps))
+
+Create the timeseries plot showing 5 minutes intervals and the steps taken
+
+ggplot(IntervalSet, aes(x=interval, y=steps)) +
+  geom_line(color = "black")
+
+Figure out the maximum steps, on average, across all the days
+
+IntervalSet[which.max(IntervalSet$steps),]
+
+The interval with maximum steps is interval 835 with 206.1698 steps
+Find out the number of NAs
+
+sum(is.na(data$steps))
+
+Number of NAs: 2304
+
+Fill in missing NAs
+
+modified_data <- data
+NAs <- is.na(modified_data$steps)
+avg_interval <- tapply(modified_data$steps, modified_data$interval, mean, na.rm = TRUE, simplify = TRUE)
+modified_data$steps[NAs] <- avg_interval[as.character(modified_data$interval[NAs])]
+
+Create aggregation similar to the 1st example in order to compare mean, median and create histogram with replaced missing values
+
+TotalStepsPerDayModified <- aggregate(x = list(Steps = modified_data$steps), by = list(Date=modified_data$date), FUN = sum)
+
+Compute mean of steps with replaced NAs (similar to the one where we excluded NA values)
+
+MeanOfStepsModified <- mean(TotalStepsPerDayModified$Steps)
+
+Compute median of steps with replaced NAs (same as the one where we excluded NA values)
+
+MedianOfStepsModified <- median(TotalStepsPerDayModified$Steps)
+
+Both mean andmedian are now the same values (10766)
+
+Create histogram showing the modified data (missing values replaced by averages)
+
+hist(TotalStepsPerDayModified$Steps,
+     main="Histogram of Steps per Day with missing values replaced", 
+     xlab="Steps", 
+     border="black", 
+     col="blue",
+     las=1, 
+     breaks=10)
 
 
 
 ## Imputing missing values
 
+Find out the number of NAs
+
+sum(is.na(data$steps))
+
+Number of NAs: 2304
+
+Fill in missing NAs
+
+modified_data <- data
+NAs <- is.na(modified_data$steps)
+avg_interval <- tapply(modified_data$steps, modified_data$interval, mean, na.rm = TRUE, simplify = TRUE)
+modified_data$steps[NAs] <- avg_interval[as.character(modified_data$interval[NAs])]
+
+Create aggregation similar to the 1st example in order to compare mean, median and create histogram with replaced missing values
+
+TotalStepsPerDayModified <- aggregate(x = list(Steps = modified_data$steps), by = list(Date=modified_data$date), FUN = sum)
+
+Compute mean of steps with replaced NAs (similar to the one where we excluded NA values)
+
+MeanOfStepsModified <- mean(TotalStepsPerDayModified$Steps)
+
+Compute median of steps with replaced NAs (same as the one where we excluded NA values)
+
+MedianOfStepsModified <- median(TotalStepsPerDayModified$Steps)
+
+Both mean andmedian are now the same values (10766)
+
+Create histogram showing the modified data (missing values replaced by averages)
+
+hist(TotalStepsPerDayModified$Steps,
+     main="Histogram of Steps per Day with missing values replaced", 
+     xlab="Steps", 
+     border="black", 
+     col="blue",
+     las=1, 
+     breaks=10)
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+Create a new column indicating if the day is a weekday or weekend
+
+modified_data <- mutate(modified_data, weektype = ifelse(weekdays(as.Date(modified_data$date)) == "Saturday" | weekdays(as.Date(modified_data$date)) == "Sunday", "weekend", "weekday"))
+
+Compute mean of steps in the 5-minute interval
+
+interval_modified_data <- modified_data %>%
+  group_by(interval, weektype) %>%
+  summarise(steps = mean(steps))
+
+Make the time series of the 5-minute interval for weekday and weekend
+
+ggplot(interval_modified_data, aes(x=interval, y=steps, color = weektype)) +
+  geom_line() +
+  facet_wrap(~weektype, ncol = 1, nrow=2)
+
+Compare the averages When we look at the plots we can observe that there is more activity during the early morning during the weekdays than during the weekend, but in general there is more activity during the weekend
